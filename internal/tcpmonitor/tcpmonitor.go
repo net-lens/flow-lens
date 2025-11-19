@@ -36,22 +36,6 @@ type Event struct {
 	Netns     uint32
 }
 
-var tcpRetransmissionsCounterVec = common.GetOrCreateCounterVec(common.CounterVecOpts{
-	Namespace: "ebpf",
-	Subsystem: "tcp",
-	Name:      "retransmit_total",
-	Help:      "Total TCP retransmissions seen by tcpmonitor",
-	Labels:    []string{"ip_version", "src_ip", "src_port", "dst_ip", "dst_port", "pid"},
-})
-
-var tcpConnectCounterVec = common.GetOrCreateCounterVec(common.CounterVecOpts{
-	Namespace: "ebpf",
-	Subsystem: "tcp",
-	Name:      "connect_total",
-	Help:      "Total TCP connects seen by tcpmonitor",
-	Labels:    []string{"ip_version", "src_ip", "src_port", "dst_ip", "dst_port", "pid"},
-})
-
 // Load opens the BPF object and validates that required programs exist.
 func (m *Manager) Load(objFileName string) error {
 	coll, err := common.LoadObjects(objFileName)
@@ -113,22 +97,22 @@ func (m *Manager) Run(ctx context.Context) error {
 			panic(err)
 		}
 		var srcIP, dstIP string
-		ipVersion := 0
 
 		switch evt.Family {
 		case 2: // AF_INET
-			ipVersion = 4
 			srcIP = net.IP(evt.Saddr[:]).String()
 			dstIP = net.IP(evt.Daddr[:]).String()
 		case 10: // AF_INET6
-			ipVersion = 6
 			srcIP = net.IP(evt.SaddrV6[:]).String()
 			dstIP = net.IP(evt.DaddrV6[:]).String()
 		}
 
-		tcpRetransmissionsCounterVec.WithLabelValues(
-			strconv.Itoa(ipVersion), srcIP, strconv.Itoa(int(evt.Sport)),
-			dstIP, strconv.Itoa(int(evt.Dport)), strconv.Itoa(int(evt.PID)),
+		pod_name := "test-pod"
+		container_name := "test-container"
+		namespace := "test-namespace"
+
+		TCPRetransmit.WithLabelValues(
+			srcIP, dstIP, strconv.Itoa(int(evt.Sport)), strconv.Itoa(int(evt.Dport)), pod_name, container_name, namespace,
 		).Inc()
 
 		fmt.Printf("TCP retransmission: %+v\n", evt.PID)

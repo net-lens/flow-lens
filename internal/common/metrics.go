@@ -26,30 +26,3 @@ type CounterVecOpts struct {
 	Help      string
 	Labels    []string
 }
-
-// GetOrCreateCounterVec returns a CounterVec tied to MetricsRegistry.
-// Subsequent calls with the same fully-qualified name reuse the existing vector.
-func GetOrCreateCounterVec(opts CounterVecOpts) *prometheus.CounterVec {
-	fqName := prometheus.BuildFQName(opts.Namespace, opts.Subsystem, opts.Name)
-
-	countersMu.Lock()
-	defer countersMu.Unlock()
-
-	if cv, ok := counters[fqName]; ok {
-		return cv
-	}
-
-	cv := prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Namespace: opts.Namespace,
-			Subsystem: opts.Subsystem,
-			Name:      opts.Name,
-			Help:      opts.Help,
-		},
-		opts.Labels,
-	)
-
-	_ = MetricsRegistry.Register(cv)
-	counters[fqName] = cv
-	return cv
-}

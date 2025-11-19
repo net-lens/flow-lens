@@ -4,14 +4,18 @@ import (
 	"context"
 	"errors"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
+	"github.com/net-lens/flow-lens/internal/common"
 	"github.com/net-lens/flow-lens/internal/tcpmonitor"
 
 	"github.com/cilium/ebpf"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type module interface {
@@ -30,6 +34,19 @@ type moduleSpec struct {
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
+
+	metricsAddr := os.Getenv("METRICS_ADDR")
+	if metricsAddr == "" {
+		metricsAddr = ":2112"
+	}
+
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.HandlerFor(common.MetricsRegistry, promhttp.HandlerOpts{}))
+
+	metricsSrv := &http.Server{
+		Addr:    metricsAddr,
+		Handler: mux,
+	}
 
 	modules := []moduleSpec{
 		{
@@ -64,8 +81,22 @@ func main() {
 		}(m)
 	}
 
+	go func() {
+		log.Printf("Prometheus metrics listening on %s/metrics", metricsAddr)
+		if err := metricsSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Printf("metrics server failed: %v", err)
+			cancel()
+		}
+	}()
+
 	<-ctx.Done()
 	cancel()
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	if err := metricsSrv.Shutdown(shutdownCtx); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		log.Printf("metrics server shutdown error: %v", err)
+	}
+	shutdownCancel()
 
 	for _, m := range modules {
 		if err := m.mod.Close(); err != nil {
