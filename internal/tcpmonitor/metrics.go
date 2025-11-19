@@ -2,14 +2,13 @@ package tcpmonitor
 
 import (
 	"github.com/net-lens/flow-lens/internal/common"
-
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (
 	TCPRetransmit = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Namespace: "ebpf",
+			Namespace: "flow_lens",
 			Subsystem: "tcp",
 			Name:      "retransmit_total",
 			Help:      "TCP retransmissions labeled by src/dst addresses",
