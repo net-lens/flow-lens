@@ -1,8 +1,30 @@
 CC := clang
-CFLAGS := -O2 -g -target bpf -I/usr/include -I/usr/src/linux-headers-$(shell uname -r)/include -D__BPF_TRACING__
+UNAME_M := $(shell uname -m)
+ifeq ($(UNAME_M),x86_64)
+TARGET_ARCH := __TARGET_ARCH_x86
+else ifeq ($(UNAME_M),aarch64)
+TARGET_ARCH := __TARGET_ARCH_arm64
+else ifeq ($(UNAME_M),arm64)
+TARGET_ARCH := __TARGET_ARCH_arm64
+else ifeq ($(UNAME_M),s390x)
+TARGET_ARCH := __TARGET_ARCH_s390
+else ifeq ($(UNAME_M),riscv64)
+TARGET_ARCH := __TARGET_ARCH_riscv
+else ifeq ($(UNAME_M),ppc64le)
+TARGET_ARCH := __TARGET_ARCH_powerpc
+else ifeq ($(UNAME_M),ppc64)
+TARGET_ARCH := __TARGET_ARCH_powerpc
+else ifeq ($(UNAME_M),armv7l)
+TARGET_ARCH := __TARGET_ARCH_arm
+else ifeq ($(UNAME_M),armv6l)
+TARGET_ARCH := __TARGET_ARCH_arm
+else
+$(error Unsupported arch: $(UNAME_M))
+endif
+CFLAGS := -O2 -g -target bpf -I/usr/include -I/usr/src/linux-headers-$(shell uname -r)/include -D__BPF_TRACING__ -D$(TARGET_ARCH)
 SRC := ./bpf/tcpmonitor/tcp_monitor.c
 OBJ := ./bpf/tcpmonitor/tcp_monitor.o
-VMLINUX_H := ./bpf/tcpmonitor/vmlinux.h
+VMLINUX_H := ./bpf/include/vmlinux.h
 
 all: build_ebpf build_go
 
