@@ -30,3 +30,8 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+.DS_Store
+./bpf/tcpmonitor/tcp_monitor.o
+./bpf/tcpmonitor/vmlinux.h
+.verifier.log
