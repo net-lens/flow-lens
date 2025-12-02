@@ -15,6 +15,7 @@ import (
 	"github.com/net-lens/flow-lens/internal/tcpmonitor"
 
 	"github.com/cilium/ebpf"
+	"github.com/net-lens/flow-lens/internal/sock"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -47,6 +48,8 @@ func main() {
 		Addr:    metricsAddr,
 		Handler: mux,
 	}
+
+	sock.InitContainerdClient()
 
 	modules := []moduleSpec{
 		{

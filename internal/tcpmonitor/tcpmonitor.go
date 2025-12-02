@@ -12,6 +12,7 @@ import (
 	"github.com/cilium/ebpf/link"
 
 	"github.com/net-lens/flow-lens/internal/common"
+	"github.com/net-lens/flow-lens/internal/sock"
 )
 
 // Manager wires together loading, attaching, and closing for the tcp monitor BPF programs.
@@ -107,15 +108,19 @@ func (m *Manager) Run(ctx context.Context) error {
 			dstIP = net.IP(evt.DaddrV6[:]).String()
 		}
 
-		pod_name := "test-pod"
-		container_name := "test-container"
-		namespace := "test-namespace"
+		sockClient := &sock.Sock{PID: int(evt.PID)}
+		containerInfo, err := sockClient.GetContainerInfo(ctx)
+		if err != nil {
+			fmt.Printf("failed to get container info: %v\n", err)
+		}
+
+		pod_name := containerInfo.PodName
+		container_name := containerInfo.ContainerName
+		namespace := containerInfo.Namespace
 
 		TCPRetransmit.WithLabelValues(
 			srcIP, dstIP, strconv.Itoa(int(evt.Sport)), strconv.Itoa(int(evt.Dport)), pod_name, container_name, namespace,
 		).Inc()
-
-		fmt.Printf("TCP retransmission: %+v\n", evt.PID)
 
 	}
 
@@ -124,32 +129,31 @@ func (m *Manager) Run(ctx context.Context) error {
 
 // Close detaches links and closes the collection.
 func (m *Manager) Close() error {
-	var firstErr error
 
 	if m.tpV4ConnectLink != nil {
-		if err := m.tpV4ConnectLink.Close(); err != nil && firstErr == nil {
-			firstErr = err
+		if err := m.tpV4ConnectLink.Close(); err != nil {
+			return err
 		}
 		m.tpV4ConnectLink = nil
 	}
 
 	if m.tpRetransmitLink != nil {
-		if err := m.tpRetransmitLink.Close(); err != nil && firstErr == nil {
-			firstErr = err
+		if err := m.tpRetransmitLink.Close(); err != nil {
+			return err
 		}
 		m.tpRetransmitLink = nil
 	}
 
 	if m.tpV4ConnectRetLink != nil {
-		if err := m.tpV4ConnectRetLink.Close(); err != nil && firstErr == nil {
-			firstErr = err
+		if err := m.tpV4ConnectRetLink.Close(); err != nil {
+			return err
 		}
 		m.tpV4ConnectRetLink = nil
 	}
 
 	if m.Collection != nil {
 		m.Collection.Close()
+		m.Collection = nil
 	}
-
 	return nil
 }

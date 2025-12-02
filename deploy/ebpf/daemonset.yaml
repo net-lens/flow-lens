@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: flow-lens
+  namespace: flow-lens
+  labels:
+    app: flow-lens
+spec:
+  selector:
+    matchLabels:
+      app: flow-lens
+  template:
+    metadata:
+      labels:
+        app: flow-lens
+    spec:
+      serviceAccountName: flow-lens
+      nodeSelector:
+        beta.kubernetes.io/arch: amd64
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      tolerations:
+        - key: "node.kubernetes.io/not-ready"
+          operator: "Exists"
+          effect: "NoSchedule"
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
+        - key: "node-role.kubernetes.io/master"
+          operator: "Exists"
+          effect: "NoSchedule"
+      containers:
+        - name: flow-lens
+          image: ghcr.io/net-lens/flow-lens:v0.1
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: METRICS_ADDR
+              value: ":2112"
+          ports:
+            - containerPort: 2112
+              name: metrics
+              protocol: TCP
+          securityContext:
+            privileged: true
+            capabilities:
+              add:
+                - BPF
+                - SYS_ADMIN
+                - NET_ADMIN
+                - SYS_RESOURCE
+            runAsUser: 0
+            runAsGroup: 0
+          volumeMounts:
+            - name: sys-btf
+              mountPath: /sys/kernel/btf
+              readOnly: true
+            - name: sys-fs-bpf
+              mountPath: /sys/fs/bpf
+            - name: sys-kernel-debug
+              mountPath: /sys/kernel/debug
+            - name: containerd-sock
+              mountPath: /var/run/containerd/containerd.sock
+              readOnly: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - name: sys-btf
+          hostPath:
+            path: /sys/kernel/btf
+            type: Directory
+        - name: sys-fs-bpf
+          hostPath:
+            path: /sys/fs/bpf
+            type: DirectoryOrCreate
+        - name: sys-kernel-debug
+          hostPath:
+            path: /sys/kernel/debug
+            type: Directory
+        - name: containerd-sock
+          hostPath:
+            path: /var/run/containerd/containerd.sock
+            type: Socket
+
