@@ -1,4 +1,0 @@
-echo XXX | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
-docker build -t flow-lens:latest .
-docker tag flow-lens:latest ghcr.io/net-lens/flow-lens:latest
-docker push ghcr.io/net-lens/flow-lens:latest
