@@ -60,10 +60,7 @@ struct {
 } connect_sk_map SEC(".maps");
 
 
-/* tracepoint: tcp_retransmit_skb */
-SEC("tracepoint/tcp/tcp_retransmit_skb")
-int tracepoint__tcp__tcp_retransmit_skb(struct tcp_tp_ctx *ctx)
-{
+static inline int tcp_helper(struct tcp_tp_ctx *ctx, __u32 type) {
     struct event evt = {};
     struct flow_key_t key = {};
     struct sock *sk = NULL;
@@ -84,7 +81,7 @@ int tracepoint__tcp__tcp_retransmit_skb(struct tcp_tp_ctx *ctx)
 
     __u16 sport = ctx->sport;
     __u16 dport = ctx->dport;
-    evt.type = 1; /* RETRANS */
+    evt.type = type;
     evt.timestamp = bpf_ktime_get_ns();
     evt.sport = sport;
     evt.dport = dport;
@@ -112,6 +109,14 @@ int tracepoint__tcp__tcp_retransmit_skb(struct tcp_tp_ctx *ctx)
     /* emit connect event to userspace */
     bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &evt, sizeof(evt));
     return 0;
+}
+
+
+/* tracepoint: tcp_retransmit_skb */
+SEC("tracepoint/tcp/tcp_retransmit_skb")
+int tracepoint__tcp__tcp_retransmit_skb(struct tcp_tp_ctx *ctx)
+{
+    return tcp_helper(ctx, 1);
 }
 
 SEC("kprobe/tcp_v4_connect")
