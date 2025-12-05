@@ -33,6 +33,8 @@ func InitContainerdClient() {
 			log.Fatalf("failed to connect to containerd: %v", err)
 		}
 
+		SetExistingContainersInfo(context.Background(), cdClient, cache)
+
 		// Start watcher
 		go startEventWatcher(context.Background(), cdClient, cache)
 	})

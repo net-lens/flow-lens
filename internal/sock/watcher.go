@@ -36,6 +36,43 @@ func startEventWatcher(ctx context.Context, client *containerd.Client, cache *pi
 	}
 }
 
+func SetExistingContainersInfo(ctx context.Context, client *containerd.Client, cache *pidCache) {
+	// containerd APIs require an explicit namespace; default to k8s workloads
+	ctx = namespaces.WithNamespace(ctx, "k8s.io")
+
+	containers, err := client.Containers(ctx)
+	if err != nil {
+		log.Printf("get containers: %v", err)
+		return
+	}
+
+	for _, container := range containers {
+		info, err := container.Info(ctx)
+		if err != nil {
+			log.Printf("container info: %v", err)
+			continue
+		}
+
+		labels := info.Labels
+
+		// --- Get PID ---
+		task, err := container.Task(ctx, nil)
+		if err != nil {
+			log.Printf("container task: %v", err)
+			continue
+		}
+
+		pid := task.Pid()
+
+		cache.Set(int(pid), ContainerInfo{
+			Namespace:     labels["io.kubernetes.pod.namespace"],
+			PodName:       labels["io.kubernetes.pod.name"],
+			ContainerName: labels["io.kubernetes.container.name"],
+		})
+	}
+
+}
+
 func handleEvent(ctx context.Context, client *containerd.Client, cache *pidCache, e *events.Envelope) {
 	ctx = namespaces.WithNamespace(ctx, e.Namespace)
 

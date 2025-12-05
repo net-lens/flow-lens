@@ -25,16 +25,20 @@ type Manager struct {
 
 type Event struct {
 	Timestamp uint64
-	PID       uint32
-	Sport     uint16
-	Dport     uint16
-	Saddr     [4]byte
-	Daddr     [4]byte
-	SaddrV6   [16]byte
-	DaddrV6   [16]byte
-	Family    uint16
-	State     int32
-	Netns     uint32
+
+	PID   uint32
+	State int32
+	Type  uint32
+	Netns uint32
+
+	Sport  uint16
+	Dport  uint16
+	Family uint16
+
+	Saddr   [4]byte
+	Daddr   [4]byte
+	SaddrV6 [16]byte
+	DaddrV6 [16]byte
 }
 
 // Load opens the BPF object and validates that required programs exist.
@@ -118,12 +122,20 @@ func (m *Manager) Run(ctx context.Context) error {
 		container_name := containerInfo.ContainerName
 		namespace := containerInfo.Namespace
 
-		TCPRetransmit.WithLabelValues(
-			srcIP, dstIP, strconv.Itoa(int(evt.Sport)), strconv.Itoa(int(evt.Dport)), pod_name, container_name, namespace,
-		).Inc()
+		fmt.Printf("Type: %d\n", int(evt.Type))
+
+		MetricIdentifier(TCPMetric{
+			SourceIP:        srcIP,
+			DestinationIP:   dstIP,
+			SourcePort:      strconv.Itoa(int(evt.Sport)),
+			DestinationPort: strconv.Itoa(int(evt.Dport)),
+			TargetPod:       pod_name,
+			TargetContainer: container_name,
+			TargetNamespace: namespace,
+			Type:            int(evt.Type),
+		})
 
 	}
-
 	return common.PollPerf(m.Collection, "events", handler)
 }
 

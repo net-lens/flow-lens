@@ -11,6 +11,11 @@ spec:
       app: flow-lens
   template:
     metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "2112"
+        prometheus.io/path: "/metrics"
+        prometheus.io/scheme: "http"
       labels:
         app: flow-lens
     spec:
@@ -31,7 +36,7 @@ spec:
           effect: "NoSchedule"
       containers:
         - name: flow-lens
-          image: ghcr.io/net-lens/flow-lens:v0.1
+          image: ghcr.io/net-lens/flow-lens:v0.0.3-testing2
           imagePullPolicy: IfNotPresent
           env:
             - name: METRICS_ADDR

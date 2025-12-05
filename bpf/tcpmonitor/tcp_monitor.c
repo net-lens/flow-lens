@@ -13,18 +13,21 @@
 
 /* Event structure sent to userspace via perf buffer */
 struct event {
-    __u64 timestamp;
-    pid_t pid;                // use kernel pid_t
+    __u64 timestamp;          // 8 bytes
+
+    pid_t pid;                // pid_t is 32-bit on Linux
+    int state;              // int is 32-bit in kernel
+    __u32 type;
+    __u32 netns;
+
     __u16 sport;
     __u16 dport;
+    __u16 family;
+
     __u8  saddr[4];
     __u8  daddr[4];
     __u8  saddr_v6[16];
     __u8  daddr_v6[16];
-    __u16 family;
-    int   state;
-    __u32 type;               // 0 = CONNECT, 1 = RETRANS
-    __u32 netns;
 };
 
 /* tracepoint context layout used (partial) */
@@ -55,6 +58,7 @@ struct {
     __type(key, u32);
     __type(value, struct sock *);
 } connect_sk_map SEC(".maps");
+
 
 /* tracepoint: tcp_retransmit_skb */
 SEC("tracepoint/tcp/tcp_retransmit_skb")
@@ -104,9 +108,6 @@ int tracepoint__tcp__tcp_retransmit_skb(struct tcp_tp_ctx *ctx)
     if (pid) {
         evt.pid = *pid;
     }
-
-    bpf_printk("tcp_retransmit_skb saddr=%x sport=%u netns=%u\n", *(__u32 *)key.saddr, key.sport, inum);
-
 
     /* emit connect event to userspace */
     bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &evt, sizeof(evt));

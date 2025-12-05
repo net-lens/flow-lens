@@ -26,6 +26,9 @@ SRC := ./bpf/tcpmonitor/tcp_monitor.c
 OBJ := ./bpf/tcpmonitor/tcp_monitor.o
 VMLINUX_H := ./bpf/include/vmlinux.h
 
+DOCKER_TOKEN := $(shell echo $(DOCKER_TOKEN))
+TAG := $(shell echo $(TAG))
+
 all: build_ebpf build_go
 
 build_ebpf: $(VMLINUX_H) $(OBJ)
@@ -38,6 +41,13 @@ $(OBJ): $(SRC) $(VMLINUX_H)
 
 build_go:
 	sudo go run ./src/main.go || (echo "Error running Go program"; exit 1)  # Stop on error
+
+docker:
+	echo $(DOCKER_TOKEN) | docker login ghcr.io -u net-lens --password-stdin
+	docker build -t ghcr.io/net-lens/flow-lens:$(TAG) .
+	docker push ghcr.io/net-lens/flow-lens:$(TAG)
+	docker tag ghcr.io/net-lens/flow-lens:$(TAG) ghcr.io/net-lens/flow-lens:latest
+	docker push ghcr.io/net-lens/flow-lens:latest
 
 clean:
 	rm -f $(OBJ) 
