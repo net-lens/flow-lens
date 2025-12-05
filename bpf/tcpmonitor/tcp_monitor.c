@@ -112,6 +112,19 @@ static inline int tcp_helper(struct tcp_tp_ctx *ctx, __u32 type) {
 }
 
 
+SEC("tracepoint/tcp/tcp_receive_reset")
+int tracepoint__tcp__tcp_receive_reset(struct tcp_tp_ctx *ctx)
+{
+    return tcp_helper(ctx, 3);
+}
+
+
+SEC("tracepoint/tcp/tcp_send_reset")
+int tracepoint__tcp__tcp_send_reset(struct tcp_tp_ctx *ctx)
+{
+    return tcp_helper(ctx, 2);
+}
+
 /* tracepoint: tcp_retransmit_skb */
 SEC("tracepoint/tcp/tcp_retransmit_skb")
 int tracepoint__tcp__tcp_retransmit_skb(struct tcp_tp_ctx *ctx)
@@ -192,6 +205,5 @@ int bpf_ret_tcp_v4_connect(struct pt_regs *ctx)
 
     return 0;
 }
-
 
 char LICENSE[] SEC("license") = "GPL";

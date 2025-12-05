@@ -36,7 +36,7 @@ spec:
           effect: "NoSchedule"
       containers:
         - name: flow-lens
-          image: ghcr.io/net-lens/flow-lens:v0.0.3-testing2
+          image: ghcr.io/net-lens/flow-lens:v0.0.3-testing3
           imagePullPolicy: IfNotPresent
           env:
             - name: METRICS_ADDR

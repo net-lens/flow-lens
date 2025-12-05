@@ -22,4 +22,5 @@ The DaemonSet expects the container image published from `.github/workflows/rele
 ## Exposed Metrics
 | Metric | Type | Labels | Description |
 | --- | --- | --- | --- |
-| `flow_lens_tcp_retransmit_total` | Counter | `source_ip`, `destination_ip`, `source_port`, `destination_port`, `target_pod`, `target_container`, `target_namespace` | Incremented for every TCP retransmission detected inside a container namespace. Empty pod/container/namespace values emit as `unknown`. |
+| `flow_lens_tcp_retransmit_total` | Counter | `source_ip`, `destination_ip`, `destination_port`, `target_pod`, `target_container`, `target_namespace`, `state` | Counts retransmissions with the current TCP state (e.g., `established`, `fin_wait_1`) so you can alert on pods stuck in specific phases. |
+| `flow_lens_tcp_reset_total` | Counter | `source_ip`, `destination_ip`, `destination_port`, `target_pod`, `target_container`, `target_namespace`, `state`, `direction` | Captures TCP resets. `direction` indicates whether the pod sent (`outbound`) or received (`inbound`) the RST, enabling separate alert policies. |

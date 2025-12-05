@@ -21,6 +21,8 @@ type Manager struct {
 	tpV4ConnectLink    link.Link
 	tpRetransmitLink   link.Link
 	tpV4ConnectRetLink link.Link
+	tpSendResetLink    link.Link
+	tpRecvResetLink    link.Link
 }
 
 type Event struct {
@@ -66,6 +68,8 @@ func (m *Manager) Attach() error {
 	connectProg := m.Collection.Programs["bpf_tcp_v4_connect"]
 	connectRetProg := m.Collection.Programs["bpf_ret_tcp_v4_connect"]
 	retransProg := m.Collection.Programs["tracepoint__tcp__tcp_retransmit_skb"]
+	sendResetProg := m.Collection.Programs["tracepoint__tcp__tcp_send_reset"]
+	recvResetProg := m.Collection.Programs["tracepoint__tcp__tcp_receive_reset"]
 
 	tpV4Connect, err := common.AttachKprobe("tcp_v4_connect", connectProg)
 	if err != nil {
@@ -84,7 +88,21 @@ func (m *Manager) Attach() error {
 		return err
 	}
 
+	tpSendReset, err := common.AttachTracepoint("tcp", "tcp_send_reset", sendResetProg)
+	if err != nil {
+		tpV4Connect.Close()
+		return err
+	}
+
+	tpRecvReset, err := common.AttachTracepoint("tcp", "tcp_receive_reset", recvResetProg)
+	if err != nil {
+		tpV4Connect.Close()
+		return err
+	}
+
 	m.tpV4ConnectLink = tpV4Connect
+	m.tpSendResetLink = tpSendReset
+	m.tpRecvResetLink = tpRecvReset
 	m.tpRetransmitLink = tpRetransmit
 	m.tpV4ConnectRetLink = tpV4ConnectRetLink
 	return nil
@@ -122,8 +140,6 @@ func (m *Manager) Run(ctx context.Context) error {
 		container_name := containerInfo.ContainerName
 		namespace := containerInfo.Namespace
 
-		fmt.Printf("Type: %d\n", int(evt.Type))
-
 		MetricIdentifier(TCPMetric{
 			SourceIP:        srcIP,
 			DestinationIP:   dstIP,
@@ -133,6 +149,7 @@ func (m *Manager) Run(ctx context.Context) error {
 			TargetContainer: container_name,
 			TargetNamespace: namespace,
 			Type:            int(evt.Type),
+			State:           int(evt.State),
 		})
 
 	}
@@ -161,6 +178,20 @@ func (m *Manager) Close() error {
 			return err
 		}
 		m.tpV4ConnectRetLink = nil
+	}
+
+	if m.tpSendResetLink != nil {
+		if err := m.tpSendResetLink.Close(); err != nil {
+			return err
+		}
+		m.tpSendResetLink = nil
+	}
+
+	if m.tpRecvResetLink != nil {
+		if err := m.tpRecvResetLink.Close(); err != nil {
+			return err
+		}
+		m.tpRecvResetLink = nil
 	}
 
 	if m.Collection != nil {

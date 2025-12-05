@@ -50,7 +50,7 @@ WORKDIR /workspace
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN chmod +x ./run_clang.sh && ./run_clang.sh
+RUN make clean && make ebpf
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} \
     go build -trimpath -ldflags="-s -w" -o /workspace/bin/flow-lens ./src
 
